@@ -1,0 +1,48 @@
+name: Virtual Machine
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_url:
+        description: 'URL ديال الملف'
+        default: ''
+      tg_chat:
+        description: 'Telegram Chat ID'
+        default: 'me'
+
+jobs:
+  run:
+    runs-on: windows-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Python deps
+        run: pip install telethon
+
+      - name: Download File
+        if: ${{ github.event.inputs.file_url != '' }}
+        run: |
+          aria2c -x 16 -s 16 -k 1M `
+            "${{ github.event.inputs.file_url }}" `
+            -o "target_file"
+
+      - name: Upload to Telegram
+        if: ${{ github.event.inputs.file_url != '' }}
+        env:
+          TG_API_ID:   ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_SESSION:  ${{ secrets.TG_SESSION }}
+          FILE_PATH:   target_file
+          TG_CHAT:     ${{ github.event.inputs.tg_chat }}
+        run: python upload.py
+
+      - name: Keep Alive
+        run: |
+          $end = (Get-Date).AddMinutes(340)
+          while ((Get-Date) -lt $end) {
+            Write-Host "alive: $(Get-Date)"
+            Start-Sleep 60
+          }
